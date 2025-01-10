@@ -61,8 +61,8 @@ void sensorCallback();
 void txCallback();
 void setupTaskScheduler();
 
-Task sensorTask(SENSOR_INT, TASK_FOREVER, &sensorCallback, &hpr);
-Task txTask(TX_INT, TASK_FOREVER, &txCallback, &lpr);
+Task sensorTask(SENSOR_INT, TASK_FOREVER, &sensorCallback, &lpr);
+Task txTask(TX_INT, TASK_FOREVER, &txCallback, &hpr);
 
 /* --- END Task Scheduler --- */
 
@@ -142,6 +142,7 @@ void txCallback(){
     Serial.printf("Message: %d successful", i);
 
   }
+  bufferIndex = 0;
 
 }
 
