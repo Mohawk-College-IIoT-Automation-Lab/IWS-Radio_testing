@@ -32,9 +32,9 @@ typedef struct _Message{
 
 /* --- END EByte E22 --- */
 
-Message *msg;
+Message *msg, msgBuffer[255];
 uint8_t bufferIndex = 0;
-uint8_t msgLength = 0;
+uint8_t msgLength = 0, totalMsgs = 0;
 
 void setup() {
 
@@ -52,22 +52,28 @@ void loop(){
     rc = e22ttl.receiveMessageRSSI();
     if(rc.status.code == 1){
       msgLength = rc.data.length();
+      totalMsgs = msgLength / sizeof(Message);
 
-      if(msgLength != sizeof(Message)){
-        Serial.printf("Message was an unexpected length: %d bytes \n", msgLength);
+      if(!totalMsgs){
+        Serial.printf("Received less data than expected \n");
         return;
       }
-      msg = (Message*)rc.data.c_str();
-      Serial.printf("RSSI: %d Msg Rx: T -> %f, H -> %f \n", rc.rssi, msg->temperature, msg->humidity);
+      memcpy(msgBuffer, rc.data.c_str(), msgLength);
+      Serial.printf("Rx'ed %d messages with RSSI: %d \n", totalMsgs, rc.rssi);
+
+      for(int i = 0 ; i < totalMsgs; i++)
+        Serial.printf("Msg %d : T -> %f, H -> %f \n", i, msgBuffer[i].temperature, msgBuffer[i].humidity);
 
     }
   }
   else
     Serial.printf("Error receiving msg: %s \n", rc.status.getResponseDescription());
 
+  memset(msgBuffer, 0, msgLength);
   msgLength = 0;
-  memset(msg, 0, sizeof(Message));
+  totalMsgs = 0;
 }
+
 
 
 void setupE22(){
@@ -135,4 +141,3 @@ void setupE22(){
 
   rsc.close();
 }
-
