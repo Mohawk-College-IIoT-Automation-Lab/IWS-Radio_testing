@@ -1,45 +1,27 @@
-#define _TASK_SLEEP_ON_IDLE_RUN
-#define _TASK_PRIORITY
-
-#include <TaskScheduler.h>
 #include <LoRa_E22.h>
-#include <DHT.h>
-#include <EEPROM.h>
-
-#define DEBUG
-
-/* --- Sensor --- */
-
-#define DHT_PIN 3
-#define DHT_TYPE DHT22
-
-void setupDHT();
-
-DHT dht(DHT_PIN, DHT_TYPE);
-
-/* --- END Sensor --- */
+#include <SoftwareSerial.h>
 
 /* --- EByte E22 --- */
 
-#define E22_AUX 13
-#define E22_M0 5
-#define E22_M1 4
+#define E22_TX 12
+#define E22_RX 14
+#define E22_AUX 4
+#define E22_M0 13
+#define E22_M1 5
 
 #define E22_RSSI true
 
 #define E22_CONFIG_ADDH 0x00
-#define E22_CONFIG_ADDL 0x02
+#define E22_CONFIG_ADDL 0x03
 #define E22_CONFIG_NETID 0x00
 #define E22_CONFIG_CHAN 0x04
-
-#define E22_DEST_ADDH 0x00
-#define E22_DEST_ADDL 0x03
 
 void setupE22();
 
 LoRa_E22 e22ttl(&Serial1, E22_AUX, E22_M0, E22_M1);
 
 ResponseStructContainer rsc;
+ResponseContainer rc;
 Configuration config;
 ResponseStatus rs;
 
@@ -50,105 +32,40 @@ typedef struct _Message{
 
 /* --- END EByte E22 --- */
 
-/* --- Task Scheduler --- */
-
-#define SENSOR_INT 60000UL
-#define TX_INT 3600000UL
-
-Scheduler lpr, hpr;
-
-void sensorCallback();
-void txCallback();
-void setupTaskScheduler();
-
-Task sensorTask(SENSOR_INT, TASK_FOREVER, &sensorCallback, &lpr);
-Task txTask(TX_INT, TASK_FOREVER, &txCallback, &hpr);
-
-/* --- END Task Scheduler --- */
-
-Message msgBuffer[255], msg;
+Message *msg;
 uint8_t bufferIndex = 0;
-
+uint8_t msgLength = 0;
 
 void setup() {
 
-#ifdef DEBUG
   Serial.begin(9600);
   delay(500);
   Serial.println("Beginning setup");
-#endif
-
-  setupDHT();
-#ifdef DEBUG
-  Serial.println("Setup DHT");
-#endif
 
   setupE22();
-#ifdef DEBUG
   Serial.println("Setup E22");
-#endif
-
-  setupTaskScheduler();
-#ifdef DEBUG
-  Serial.println("Setup Task Scheduler");
-#endif
 
 }
 
-void loop() {
-  lpr.execute();
-}
+void loop(){
+  if(e22ttl.available()){
+    rc = e22ttl.receiveMessageRSSI();
+    if(rc.status.code == 1){
+      msgLength = rc.data.length();
 
-void sensorCallback(){
-  msg.temperature = dht.readTemperature();
-  msg.humidity = dht.readHumidity();
+      if(msgLength != sizeof(Message)){
+        Serial.printf("Message was an unexpected length: %d bytes", msgLength);
+        return;
+      }
+      msg = (Message*)rc.data.c_str();
+      Serial.printf("RSSI: %d Msg Rx: T -> %f, H -> %f", rc.rssi, msg->temperature, msg->humidity);
 
-#ifdef DEBUG
-  Serial.printf("T: %f, H: %f \n", msg.temperature, msg.humidity);
-#endif
-
-  msgBuffer[bufferIndex] = msg;
-  bufferIndex++;
-}
-
-
-void txCallback(){
-  if(!bufferIndex){
-
-#ifdef DEBUG
-    Serial.println("No data to send");
-#endif
-
-    return;
+    }
   }
-
-#ifdef DEBUG
-  Serial.printf("Tx %d messages", bufferIndex);
-#endif
-
-  rs = e22ttl.sendFixedMessage(E22_DEST_ADDH, E22_DEST_ADDL, E22_CONFIG_CHAN, msgBuffer, sizeof(Message) * bufferIndex);
-    
-  if(rs.code != E22_SUCCESS){
-#ifdef DEBUG
-    Serial.printf("Error code: %d -> %s", rs.code, getResponseDescriptionByParams(rs.code));
-#endif
-    return;
-  }
-
-  Serial.printf("Message successful");
-  
-  // clear the bufferIndex and Buffer
-  memset(msgBuffer, 0, sizeof(Message)*bufferIndex);
-  bufferIndex = 0;
-
+  else
+    Serial.printf("Error receiving msg: %s", rc.status.getResponseDescription());
 }
 
-void setupTaskScheduler(){
-  lpr.init(); // init the low priority task runner
-  lpr.setHighPriorityScheduler(&hpr); // add the high priority task runner
-
-  lpr.enableAll(); // enables all tasks, both high and low priority
-}
 
 void setupE22(){
   e22ttl.begin(); // begin the e22
@@ -183,7 +100,6 @@ void setupE22(){
 
   e22ttl.setConfiguration(config, WRITE_CFG_PWR_DWN_SAVE);
 
-#ifdef DEBUG
   Serial.println(rsc.status.getResponseDescription());
   Serial.println(rsc.status.code);
   
@@ -214,10 +130,6 @@ void setupE22(){
 
   Serial.println("----------------------------------------");
 
-#endif
   rsc.close();
 }
 
-void setupDHT(){
-  dht.begin();
-}

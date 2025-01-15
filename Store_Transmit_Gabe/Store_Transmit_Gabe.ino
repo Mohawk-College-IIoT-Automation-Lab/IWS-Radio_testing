@@ -43,10 +43,10 @@ ResponseStructContainer rsc;
 Configuration config;
 ResponseStatus rs;
 
-struct Message{
+typedef struct _Message{
   float temperature;
   float humidity;
-};
+}Message;
 
 /* --- END EByte E22 --- */
 
