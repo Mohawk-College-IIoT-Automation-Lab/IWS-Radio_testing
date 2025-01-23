@@ -1,13 +1,15 @@
+#define ACTIVATE_SOFTWARE_SERIAL
+
 #include <LoRa_E22.h>
 #include <SoftwareSerial.h>
 
 /* --- EByte E22 --- */
 
-#define E22_TX 12
-#define E22_RX 14
-#define E22_AUX 4
-#define E22_M0 13
-#define E22_M1 5
+#define E22_TX 14
+#define E22_RX 12
+#define E22_AUX 13
+#define E22_M0 5
+#define E22_M1 4
 
 #define E22_RSSI true
 
@@ -18,7 +20,7 @@
 
 void setupE22();
 
-LoRa_E22 e22ttl(&Serial1, E22_AUX, E22_M0, E22_M1);
+LoRa_E22 e22ttl(E22_TX, E22_RX, E22_AUX, E22_M0, E22_M1 );
 
 ResponseStructContainer rsc;
 ResponseContainer rc;
@@ -32,7 +34,8 @@ typedef struct _Message{
 
 /* --- END EByte E22 --- */
 
-Message *msg;
+Message msg;
+char *buff;
 uint8_t bufferIndex = 0;
 uint8_t msgLength = 0;
 
@@ -44,11 +47,12 @@ void setup() {
 
   setupE22();
   Serial.println("Setup E22");
+  buff = (char*)malloc(sizeof(Message));
 
 }
 
 void loop(){
-  if(e22ttl.available()){
+  if(e22ttl.available() > 0){
     rc = e22ttl.receiveMessageRSSI();
     if(rc.status.code == 1){
       msgLength = rc.data.length();
@@ -57,23 +61,22 @@ void loop(){
         Serial.printf("Message was an unexpected length: %d bytes \n", msgLength);
         return;
       }
-      msg = (Message*)rc.data.c_str();
-      Serial.printf("RSSI: %d Msg Rx: T -> %f, H -> %f \n", rc.rssi, msg->temperature, msg->humidity);
+      rc.data.getBytes((unsigned char*)&msg, sizeof(Message));
+      Serial.printf("RSSI: %d Msg Rx: T -> %f, H -> %f \n", rc.rssi, msg.temperature, msg.humidity);
 
     }
+    else
+      Serial.printf("Error receiving msg: %s \n", rc.status.getResponseDescription());
+
+    msgLength = 0;
+    memset(&msg, 0, sizeof(Message));
   }
-  else
-    Serial.printf("Error receiving msg: %s \n", rc.status.getResponseDescription());
-
-  msgLength = 0;
-  memset(msg, 0, sizeof(Message));
+  
 }
-
 
 void setupE22(){
   e22ttl.begin(); // begin the e22
 
-  
   rsc = e22ttl.getConfiguration(); // get the current config from the E22
   config = *(Configuration*)rsc.data; // extract the config data
 
@@ -98,7 +101,7 @@ void setupE22(){
   config.TRANSMISSION_MODE.fixedTransmission = FT_FIXED_TRANSMISSION;
   config.TRANSMISSION_MODE.enableRepeater = REPEATER_DISABLED; 
   config.TRANSMISSION_MODE.enableLBT = LBT_DISABLED;
-  config.TRANSMISSION_MODE.WORTransceiverControl = WOR_TRANSMITTER;
+  config.TRANSMISSION_MODE.WORTransceiverControl = WOR_RECEIVER;
   config.TRANSMISSION_MODE.WORPeriod = WOR_2000_011;
 
   e22ttl.setConfiguration(config, WRITE_CFG_PWR_DWN_SAVE);

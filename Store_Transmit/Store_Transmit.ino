@@ -163,7 +163,7 @@ void transmitStoredData() {
 
   bool success = true;
   for (int i = 0; i < count; i++) {
-    ResponseStatus rs = e22ttl.sendFixedMessage(0, DESTINATION_ADDL, DESTINATION_CHAN, &allData[i], sizeof(Message));
+    ResponseStatus rs = e22ttl.sendFixedMessage(0, DESTINATION_ADDL, DESTINATION_CHAN, &allData[i], sizeof(Message)); // sends 8B of data
     if (rs.code != 1) {
       // Transmission error
       Serial.print("Error transmitting message index ");

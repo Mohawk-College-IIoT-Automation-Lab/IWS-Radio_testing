@@ -77,7 +77,7 @@ void loop() {
   while (e22ttl.available() > 0) {
     ResponseContainer rc = e22ttl.receiveMessageRSSI();
     if (rc.status.code == 1) {
-      int msgLength = rc.data.length();
+      int msgLength = rc.data.length(); // size 8B
 
       // We expect 8 bytes: 4 bytes for temperature float + 4 bytes for humidity float
       if (msgLength != sizeof(Message)) {
