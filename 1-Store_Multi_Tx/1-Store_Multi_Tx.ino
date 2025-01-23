@@ -1,4 +1,6 @@
 #define ACTIVATE_SOFTWARE_SERIAL
+#define _TASK_PRIORITY
+#define _TASK_SLEEP_ON_IDLE_RUN
 
 #include <TaskScheduler.h>
 #include <LoRa_E22.h>
@@ -55,7 +57,7 @@ typedef struct _Message{
 #define SENSOR_INT 1000UL // 1 second   //60000UL // 1 minute
 #define TX_INT 60000UL // 1 minute      // 3600000UL // 1 hour
 
-Scheduler lpr; // low priorirty runner
+Scheduler lpr, hpr; // low priorirty runner
 
 void sensorCallback();
 void txCallback();
@@ -67,12 +69,15 @@ Task txTask(TX_INT, TASK_FOREVER, &txCallback);
 /* --- END Task Scheduler --- */
 
 Message msgBuffer[255], msg;
+char buff[8];
+const uint16_t buffSize = 255 * sizeof(Message);
 uint8_t bufferIndex = 0;
 
 void setup() {
+  ESP.wdtDisable();
 
 #ifdef DEBUG
-  Serial.begin(9600);
+  Serial.begin(115200);
   delay(500);
   Serial.println("\n Beginning setup");
 #endif
@@ -106,12 +111,10 @@ void sensorCallback(){
   msg.temperature = dht.readTemperature();
   msg.humidity = dht.readHumidity();
 
-#ifdef DEBUG
-  Serial.printf("%d -> T: %0.3f, H: %f \n", bufferIndex, msg.temperature, msg.humidity);
-#endif
-
   msgBuffer[bufferIndex] = msg;
   bufferIndex++;
+  Serial.printf("%d %f %f \n", bufferIndex, msg.temperature, msg.humidity);
+  ESP.wdtFeed();
 }
 
 void txCallback(){
@@ -129,11 +132,11 @@ void txCallback(){
 #endif
 
   for(int i = 0; i < bufferIndex; i++){
-    rs = e22ttl.sendFixedMessage(E22_DEST_ADDH, E22_DEST_ADDL, E22_CONFIG_CHAN, &msgBuffer[i], sizeof(Message));
+    ESP.wdtFeed();
     
-    msgBuffer[i].temperature = 0.0;
-    msgBuffer[i].humidity = 0.0;
-
+    Serial.printf("%f %f \n", msgBuffer[i].temperature, msgBuffer[i].humidity);
+    rs = e22ttl.sendFixedMessage(E22_DEST_ADDH, E22_DEST_ADDL, E22_CONFIG_CHAN, (const void*)&msgBuffer[i], sizeof(Message));
+    
     if(rs.code != E22_SUCCESS){
 
 #ifdef DEBUG
@@ -146,15 +149,23 @@ void txCallback(){
     Serial.printf("Message: %d successful \n", i);
 
   }
+  
+  memset(&msgBuffer, 0, buffSize);
   bufferIndex = 0;
 
 }
 
 void setupTaskScheduler(){
   lpr.init(); // init the low priority task runner
+  hpr.init();
+
+  lpr.setHighPriorityScheduler(&hpr);
+
   lpr.addTask(sensorTask);
-  lpr.addTask(txTask);
-  lpr.enableAll(); // enables all tasks, both high and low priority
+  hpr.addTask(txTask);
+
+  sensorTask.enable();
+  txTask.enable();
 }
 
 void setupE22(){
