@@ -62,7 +62,7 @@ void loop(){
         return;
       }
       rc.data.getBytes((unsigned char*)&msg, sizeof(Message));
-      Serial.printf("RSSI: %d Msg Rx: T -> %f, H -> %f \n", rc.rssi, msg.temperature, msg.humidity);
+      Serial.printf("RSSI: %d Msg Rx: T -> %0.3f, H -> %0.3f \n", rc.rssi, msg.temperature, msg.humidity);
 
     }
     else
