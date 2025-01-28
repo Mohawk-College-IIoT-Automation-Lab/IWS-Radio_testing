@@ -119,17 +119,8 @@ void sensorCallback(){
 
 void txCallback(){
   if(!bufferIndex){
-
-#ifdef DEBUG
-    Serial.println("No data to send");
-#endif
-
     return;
   }
-
-#ifdef DEBUG
-  Serial.printf("Tx %d messages \n", bufferIndex);
-#endif
 
   for(int i = 0; i < bufferIndex; i++){
     ESP.wdtFeed();
@@ -138,18 +129,13 @@ void txCallback(){
     rs = e22ttl.sendFixedMessage(E22_DEST_ADDH, E22_DEST_ADDL, E22_CONFIG_CHAN, (const void*)&msgBuffer[i], sizeof(Message));
     
     if(rs.code != E22_SUCCESS){
-
-#ifdef DEBUG
-      Serial.printf("Error code: %d -> %s \m", rs.code, getResponseDescriptionByParams(rs.code));
-#endif
-
       return;
     }
 
     Serial.printf("Message: %d successful \n", i);
 
   }
-  
+
   memset(&msgBuffer, 0, buffSize);
   bufferIndex = 0;
 
