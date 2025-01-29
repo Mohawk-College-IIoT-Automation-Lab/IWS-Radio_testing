@@ -10,9 +10,9 @@
 #include <LoRa_E22.h>
 #include <TaskScheduler.h>
 
-#define SENSOR_INT TASK_SECOND // 1 sample per second 
-#define TX_INT TASK_SECOND * 45 // 1 tx every 2 minute
-#define FLOATS_PER_TX TX_INT / SENSOR_INT + 1 // 2m * 60smpl/m + 1 = 121
+#define SENSOR_INT TASK_SECOND * 1// 1 sample per second 
+#define TX_INT TASK_SECOND * 20 // 1 tx every 2 minute
+#define FLOATS_PER_TX TX_INT / SENSOR_INT // 2m * 60smpl/m + 1 = 121
 
 #define DATA_BUFFER_SIZE FLOATS_PER_TX
 
@@ -38,4 +38,16 @@ typedef struct _Message{
   float humidity;
 }Message;
 
+void buffer_dump(uint8_t *buffer, uint8_t length){
+  DEBUG_PRINTLN("---- dump ----");
+  for(int i = 0; i < length; i++){
+    if(!(i%8))
+      DEBUG_PRINTLN(" ");
+      
+    DEBUG_PRINT(buffer[i], HEX); 
+    DEBUG_PRINT(" , ");
+    
+  }
+  DEBUG_PRINTLN(" ");
+}
 #endif

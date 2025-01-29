@@ -85,10 +85,14 @@ void txCallback(){
   if(!reading_index)
     return;
 
-  DEBUG_PRINT("Starting tx, sending: "); DEBUG_PRINT(reading_index); DEBUG_PRINTLN(" packets");
+  DEBUG_PRINTLN("Starting tx, sending: ")
+  DEBUG_PRINT("Packet size: ");  DEBUG_PRINTLN(reading_index * sizeof(Message))
+
+  buffer_dump((uint8_t*)reading, reading_index * sizeof(Message));
 
   rs = e22ttl.sendFixedMessage(E22_DEST_ADDH, E22_DEST_ADDL, E22_CONFIG_CHAN, (const void*)reading, sizeof(Message) * reading_index);
 
+  DEBUG_PRINT("rs code: "); DEBUG_PRINTLN(rs.getResponseDescription());
   if(rs.code != E22_SUCCESS){
     DEBUG_PRINTLN("E22 failed to send message");
     return;
@@ -157,7 +161,7 @@ uint8_t setupE22(){
   config->TRANSMISSION_MODE.fixedTransmission = FT_FIXED_TRANSMISSION;
   config->TRANSMISSION_MODE.enableRepeater = REPEATER_DISABLED; 
   config->TRANSMISSION_MODE.enableLBT = LBT_DISABLED;
-  config->TRANSMISSION_MODE.WORTransceiverControl = WOR_RECEIVER;
+  config->TRANSMISSION_MODE.WORTransceiverControl = WOR_TRANSMITTER;
   config->TRANSMISSION_MODE.WORPeriod = WOR_2000_011;
 
   e22ttl.setConfiguration(*config, WRITE_CFG_PWR_DWN_SAVE);
