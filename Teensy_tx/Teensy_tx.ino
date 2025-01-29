@@ -183,12 +183,14 @@ uint8_t setupE22(){
   config->TRANSMISSION_MODE.fixedTransmission = FT_FIXED_TRANSMISSION;
   config->TRANSMISSION_MODE.enableRepeater = REPEATER_DISABLED; 
   config->TRANSMISSION_MODE.enableLBT = LBT_DISABLED;
-  config->TRANSMISSION_MODE.WORTransceiverControl = WOR_TRANSMITTER;
+  config->TRANSMISSION_MODE.WORTransceiverControl = WOR_RECEIVER;
   config->TRANSMISSION_MODE.WORPeriod = WOR_2000_011;
 
   e22ttl.setConfiguration(*config, WRITE_CFG_PWR_DWN_SAVE);
-  DEBUG_PRINTLN("Set config to E22");
-  DEBUG_PRINTLN("Trying to read back config");
+
+  DEBUG_PRINTLN(rsc.status.getResponseDescription());
+  DEBUG_PRINTLN(rsc.status.code);
+
   // read the config we just wrote
   rsc = e22ttl.getConfiguration(); // get the current config from the E22
   config = (Configuration*)rsc.data; // extract the config data
