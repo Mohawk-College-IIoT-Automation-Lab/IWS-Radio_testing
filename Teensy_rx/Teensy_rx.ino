@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <string.h>
 #include "Helper.h"
 
 #define TX_METHOD 2
@@ -12,13 +13,7 @@ ResponseContainer rc;
 Configuration *config;
 ResponseStatus rs;
 
-#if TX_METHOD == 1
-Message temp_message;
-
-#elif TX_METHOD == 2
-Message buffer[DATA_BUFFER_SIZE];
-
-#endif
+Message buffer[360];
 
 void setup() {
   
@@ -37,47 +32,22 @@ void loop() {
 
   if(e22ttl.available() > 0){
     DEBUG_PRINTLN("Data available from e22");
- 
-    DEBUG_PRINT("Tx mode: "); DEBUG_PRINTLN(TX_METHOD);
 
- #if TX_METHOD == 1
+    rsc = e22ttl.receiveMessageComplete(160, true);
 
-    rc = e22ttl.receiveMessage();
+    DEBUG_PRINT("rc code: "); DEBUG_PRINTLN(rsc.status.code);
+    DEBUG_PRINT("RSSI: "); DEBUG_PRINTLN((uint8_t)rsc.rssi, DEC);
 
-    DEBUG_PRINT("rc code: "); DEBUG_PRINTLN(rc.status.code);
-    DEBUG_PRINT("Data Rx: "); DEBUG_PRINTLN(rc.data.length());
-
-    if(rc.status.code == 1){
-      rc.data.getBytes((unsigned char*)&temp_message, 8);
-      Serial.printf("Received data: T %f , H %f \n", temp_message.temperature, temp_message.humidity);
+    if(rsc.status.code == 1){
+      memcpy((void*)&buffer, (const void*)rsc.data, 160);
+      message_printer((Message*)&buffer, 20);
     }
     else{
-      DEBUG_PRINT("Error receiving data -> "); DEBUG_PRINTLN(rc.status.getResponseDescription());
+      DEBUG_PRINT("Error receiving data -> "); DEBUG_PRINTLN(rsc.status.getResponseDescription());
     }
 
+    rsc.close();
 
-#elif TX_METHOD == 2
-
-    rc = e22ttl.receiveMessageRSSI();
-
-    DEBUG_PRINT("rc code: "); DEBUG_PRINTLN(rc.status.code);
-    DEBUG_PRINT("Data Rx: "); DEBUG_PRINTLN(rc.data.length());
-    DEBUG_PRINT("RSSI: "); DEBUG_PRINTLN(rc.rssi);
-
-    if(rc.status.code == 1){
-      rc.data.getBytes((unsigned char*)&buffer, DATA_BUFFER_SIZE);
-      Serial.println("-----   -----   -----");
-      Serial.printf("Rx %d message\n", rc.data.length() / sizeof(Message));
-      Serial.printf("   [0] t-> %f h-> %f \n", buffer[0].temperature, buffer[0].humidity);
-      Serial.printf("   [1] t-> %f h-> %f \n", buffer[1].temperature, buffer[1].humidity);
-      Serial.printf("   [2] t-> %f h-> %f \n", buffer[2].temperature, buffer[2].humidity);
-      Serial.println("-----   -----   -----");
-    }
-    else{
-      DEBUG_PRINT("Error receiving data -> "); DEBUG_PRINTLN(rc.status.getResponseDescription());
-    }
-
-#endif
   }
 
 }

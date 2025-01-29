@@ -29,6 +29,27 @@ typedef struct _Message{
   float humidity;
 }Message;
 
+void buffer_dump(uint8_t *buffer, uint8_t length){
+  DEBUG_PRINTLN("---- dump ----");
+  for(int i = 0; i < length; i++){
+    if(!(i%8))
+      DEBUG_PRINTLN(" ");
+      
+    DEBUG_PRINT(buffer[i], HEX); 
+    DEBUG_PRINT(" , ");
+    
+  }
+  DEBUG_PRINTLN(" ");
+}
+
+void message_printer(Message *msgs, uint8_t length){
+  DEBUG_PRINTLN("---- Message printer ----");
+  for(int i = 0; i < length; i++){
+    DEBUG_PRINT(i); DEBUG_PRINT(" T: "); DEBUG_PRINT(msgs[i].temperature); DEBUG_PRINT(" H: "); DEBUG_PRINTLN(msgs[i].humidity);
+  }
+  DEBUG_PRINTLN(" ");
+}
+
 
 
 #endif
