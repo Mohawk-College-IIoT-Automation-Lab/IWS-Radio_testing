@@ -5,7 +5,7 @@
 
 uint8_t setupE22();
 
-LoRa_E22 e22ttl(&Serial2, E22_AUX, E22_M0, E22_M1 );
+LoRa_E22 e22ttl(&Serial2, E22_AUX, E22_M0, E22_M1, UART_BPS_RATE_9600 );
 
 ResponseStructContainer rsc;
 ResponseContainer rc;
@@ -34,37 +34,54 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly
+
   if(e22ttl.available() > 0){
     DEBUG_PRINTLN("Data available from e22");
+ 
+    DEBUG_PRINT("Tx mode: "); DEBUG_PRINTLN(TX_METHOD);
     
-    rc = e22ttl.receiveMessageRSSI();
+ #if TX_METHOD == 1
+
+    rc = e22ttl.receiveMessage();
+
     DEBUG_PRINT("rc code: "); DEBUG_PRINTLN(rc.status.code);
     DEBUG_PRINT("Data Rx: "); DEBUG_PRINTLN(rc.data.length());
-    DEBUG_PRINT("Rx RSSI: "); DEBUG_PRINTLN(rc.rssi);
 
     if(rc.status.code == 1){
-
-#if TX_METHOD == 1
       rc.data.getBytes((unsigned char*)&temp_message, 8);
       Serial.printf("Received data: T %f , H %f \n", temp_message.temperature, temp_message.humidity);
-#elif TX_METHOD == 2
-      rc.data.getBytes((unsigned char*)&buffer, DATA_BUFFER_SIZE);
-      Serial.printf("Rx %d message\n", rc.data.length() / sizeof(Message));
-      Serial.printg("   [0] t-> %f h-> %f \n", buffer[0].temperature, buffer[0].humidity);
-      Serial.printg("   [1] t-> %f h-> %f \n", buffer[1].temperature, buffer[1].humidity);
-      Serial.printg("   [2] t-> %f h-> %f \n", buffer[2].temperature, buffer[2].humidity);
-#endif
-
     }
     else{
       DEBUG_PRINT("Error receiving data -> "); DEBUG_PRINTLN(rc.status.getResponseDescription());
     }
 
+
+#elif TX_METHOD == 2
+
+    rc = e22ttl.receiveMessageRSSI();
+
+    DEBUG_PRINT("rc code: "); DEBUG_PRINTLN(rc.status.code);
+    DEBUG_PRINT("Data Rx: "); DEBUG_PRINTLN(rc.data.length());
+    DEBUG_PRINT("RSSI: "); DEBUG_PRINTLN(rc.rssi);
+
+    if(rc.status.code == 1){
+      rc.data.getBytes((unsigned char*)&buffer, DATA_BUFFER_SIZE);
+      Serial.printf("Rx %d message\n", rc.data.length() / sizeof(Message));
+      Serial.printg("   [0] t-> %f h-> %f \n", buffer[0].temperature, buffer[0].humidity);
+      Serial.printg("   [1] t-> %f h-> %f \n", buffer[1].temperature, buffer[1].humidity);
+      Serial.printg("   [2] t-> %f h-> %f \n", buffer[2].temperature, buffer[2].humidity);
+    }
+    else{
+      DEBUG_PRINT("Error receiving data -> "); DEBUG_PRINTLN(rc.status.getResponseDescription());
+    }
+
+#endif
   }
 
 }
 
 uint8_t setupE22(){
+  Serial2.begin(9600);
   e22ttl.begin(); // begin the e22
 
   rsc = e22ttl.getConfiguration(); // get the current config from the E22
