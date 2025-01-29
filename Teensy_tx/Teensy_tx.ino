@@ -27,7 +27,7 @@ uint8_t reading_index = 0;
 
 DHT dht(DHT_PIN, DHT_TYPE);
 
-LoRa_E22 e22ttl(&Serial2, E22_AUX, E22_M0, E22_M1);
+LoRa_E22 e22ttl(&Serial2, E22_AUX, E22_M0, E22_M1, UART_BPS_RATE_9600);
 
 ResponseStructContainer rsc;
 Configuration *config;
@@ -160,6 +160,7 @@ void setupTasks(){
 }
 
 uint8_t setupE22(){
+  Serial2.begin(9600);
   e22ttl.begin(); // begin the e22
 
   rsc = e22ttl.getConfiguration(); // get the current config from the E22
@@ -170,17 +171,13 @@ uint8_t setupE22(){
   config->NETID = E22_CONFIG_NETID;
   config->CHAN = E22_CONFIG_CHAN;
 
-  /* Default SPED settings
-  config.SPED.uartBaudRate = UART_BPS_9600;
-  config.SPED.airDataRate = AIR_DATA_RATE_010_24;
-  config.SPED.uartParity = MODE_00_8N1;
-  */
+  config->SPED.uartBaudRate = UART_BPS_9600;
+  config->SPED.airDataRate = AIR_DATA_RATE_010_24;
+  config->SPED.uartParity = MODE_00_8N1;
 
-  /* Default OPTION settings
-  config.OPTION.subPacketSetting = SPS_240_00;
-  config.OPTION.RSSIAmbientNoise = RSSI_AMBIENT_NOISE_DISABLED;
-  config.OPTION.transmissionPower = POWER_22;
-  */
+  config->OPTION.subPacketSetting = SPS_240_00;
+  config->OPTION.RSSIAmbientNoise = RSSI_AMBIENT_NOISE_DISABLED;
+  config->OPTION.transmissionPower = POWER_22;
 
   config->TRANSMISSION_MODE.enableRSSI = RSSI_ENABLED;
   config->TRANSMISSION_MODE.fixedTransmission = FT_FIXED_TRANSMISSION;
@@ -190,10 +187,8 @@ uint8_t setupE22(){
   config->TRANSMISSION_MODE.WORPeriod = WOR_2000_011;
 
   e22ttl.setConfiguration(*config, WRITE_CFG_PWR_DWN_SAVE);
-
-  DEBUG_PRINTLN(rsc.status.getResponseDescription());
-  DEBUG_PRINTLN(rsc.status.code);
-
+  DEBUG_PRINTLN("Set config to E22");
+  DEBUG_PRINTLN("Trying to read back config");
   // read the config we just wrote
   rsc = e22ttl.getConfiguration(); // get the current config from the E22
   config = (Configuration*)rsc.data; // extract the config data
