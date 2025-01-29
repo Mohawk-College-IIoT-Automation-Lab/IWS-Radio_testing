@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "Helper.h"
 
-#define TX_METHOD 1
+#define TX_METHOD 2
 
 uint8_t setupE22();
 
@@ -39,7 +39,7 @@ void loop() {
     DEBUG_PRINTLN("Data available from e22");
  
     DEBUG_PRINT("Tx mode: "); DEBUG_PRINTLN(TX_METHOD);
-    
+
  #if TX_METHOD == 1
 
     rc = e22ttl.receiveMessage();
@@ -66,10 +66,12 @@ void loop() {
 
     if(rc.status.code == 1){
       rc.data.getBytes((unsigned char*)&buffer, DATA_BUFFER_SIZE);
+      Serial.println("-----   -----   -----");
       Serial.printf("Rx %d message\n", rc.data.length() / sizeof(Message));
-      Serial.printg("   [0] t-> %f h-> %f \n", buffer[0].temperature, buffer[0].humidity);
-      Serial.printg("   [1] t-> %f h-> %f \n", buffer[1].temperature, buffer[1].humidity);
-      Serial.printg("   [2] t-> %f h-> %f \n", buffer[2].temperature, buffer[2].humidity);
+      Serial.printf("   [0] t-> %f h-> %f \n", buffer[0].temperature, buffer[0].humidity);
+      Serial.printf("   [1] t-> %f h-> %f \n", buffer[1].temperature, buffer[1].humidity);
+      Serial.printf("   [2] t-> %f h-> %f \n", buffer[2].temperature, buffer[2].humidity);
+      Serial.println("-----   -----   -----");
     }
     else{
       DEBUG_PRINT("Error receiving data -> "); DEBUG_PRINTLN(rc.status.getResponseDescription());
