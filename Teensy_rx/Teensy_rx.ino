@@ -21,9 +21,10 @@ Message buffer[DATA_BUFFER_SIZE];
 #endif
 
 void setup() {
-  // put your setup code here, to run once:
+  
   Serial.begin(9600);
-  delay(250);
+  while(!Serial) { }; // wait for serial monitor to connect
+
   DEBUG_PRINTLN("Started Serial & debug");
 
   DEBUG_PRINTLN("Trying E22 setup");

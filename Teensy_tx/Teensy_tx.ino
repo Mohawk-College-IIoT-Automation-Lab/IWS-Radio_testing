@@ -35,9 +35,13 @@ ResponseStatus rs;
 
 
 void setup() {
-  // put your setup code here, to run once:
+  
+  // Only need to enable when in debug
+#ifdef LoRa_E22_DEBUG
   Serial.begin(9600);
-  delay(250);
+  while(!Serial){ }; // wait for serial monitor to connect
+#endif
+
   DEBUG_PRINTLN("Started Serial & debug");
 
   DEBUG_PRINTLN("Trying DHT setup");
