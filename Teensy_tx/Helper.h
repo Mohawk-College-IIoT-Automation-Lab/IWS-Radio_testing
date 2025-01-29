@@ -6,21 +6,21 @@
 
 #define LoRa_E22_DEBUG
 
-#include <LoRa_E22.h>
 #include <DHT.h>
+#include <LoRa_E22.h>
 #include <TaskScheduler.h>
 
 #define SENSOR_INT TASK_SECOND // 1 sample per second 
-#define TX_INT TASK_MINUTE * 2 // 1 tx every 2 minute
+#define TX_INT TASK_SECOND * 45 // 1 tx every 2 minute
 #define FLOATS_PER_TX TX_INT / SENSOR_INT + 1 // 2m * 60smpl/m + 1 = 121
 
 #define DATA_BUFFER_SIZE FLOATS_PER_TX
 
-#define DHT_PIN 3
+#define DHT_PIN 14 
 #define DHT_TYPE DHT22
 
-#define E22_AUX 4
-#define E22_M0 3
+#define E22_AUX 3
+#define E22_M0 4
 #define E22_M1 5
 
 #define E22_RSSI true
@@ -37,7 +37,5 @@ typedef struct _Message{
   float temperature;
   float humidity;
 }Message;
-
-
 
 #endif
