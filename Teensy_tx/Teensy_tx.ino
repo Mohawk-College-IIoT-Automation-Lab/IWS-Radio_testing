@@ -2,8 +2,6 @@
 #include <Arduino.h>
 #include "Helper.h"
 
-#define TX_METHOD 1 // 1 - indv packets , 2 - one big data packet
-
 void sensorCallback();
 void txCallback();
 
@@ -19,7 +17,7 @@ Scheduler runner;
 Task sensorTask(SENSOR_INT, TASK_FOREVER, &sensorCallback);
 Task txTask(TX_INT, TASK_FOREVER, &txCallback);
 
-Message data_buffer[2][DATA_BUFFER_SIZE];
+Message data_buffer[DATA_BUFFER_SIZE];
 Message *reading, *writing;
 uint8_t buff_index = 0;
 uint8_t writing_index = 0;
@@ -79,7 +77,6 @@ void sensorCallback(){
 }
 
 void txCallback(){
-
   switch_data_buffer();
   DEBUG_PRINTLN("SW BUFF, updated reading index");
 
@@ -90,25 +87,6 @@ void txCallback(){
 
   DEBUG_PRINT("Starting tx, sending: "); DEBUG_PRINT(reading_index); DEBUG_PRINTLN(" packets");
 
-#if TX_METHOD == 1
-
-  DEBUG_PRINTLN("Using tx method 1");
-
-  for(int i = 0; i < reading_index; i++){
-    DEBUG_PRINT("SENDING T: "); DEBUG_PRINT(reading[i].temperature); DEBUG_PRINT(" , "); DEBUG_PRINTLN(reading[i].humidity);
-    rs = e22ttl.sendFixedMessage(E22_DEST_ADDH, E22_DEST_ADDL, E22_CONFIG_CHAN, (const void*)&reading[i], sizeof(Message));
-
-    if(rs.code != E22_SUCCESS){
-      DEBUG_PRINTLN("E22 failed to send message");
-      return;
-    }
-
-    DEBUG_PRINT("Message "); DEBUG_PRINT(i); DEBUG_PRINTLN(" successful");
-
-  }
-
-#elif TX_METHOD == 2
-  DEBUG_PRINTLN("Using tx method 2");
   rs = e22ttl.sendFixedMessage(E22_DEST_ADDH, E22_DEST_ADDL, E22_CONFIG_CHAN, (const void*)reading, sizeof(Message) * reading_index);
 
   if(rs.code != E22_SUCCESS){
@@ -117,11 +95,7 @@ void txCallback(){
   }
 
   DEBUG_PRINTLN("All data sent correctly");
-
-#endif
-  
   DEBUG_PRINTLN("Wiping reading buffer");
-  wipe_buffer(reading);
 
 }
 
