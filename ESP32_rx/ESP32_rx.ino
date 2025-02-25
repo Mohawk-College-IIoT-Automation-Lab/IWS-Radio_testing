@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include "Helper.h"
 
+extern Packet rx_packet;
+uint8_t rssi = 0;
+
 void setup() {
   
   Serial.begin(9600);
@@ -10,22 +13,28 @@ void setup() {
 
   DEBUG_PRINTLN("Trying E22 setup");
   setupE22();
+
+  DEBUG_PRINTLN("Trying Wifi setup");
+  setupWiFi();
+
+  DEBUG_PRINTLN("Trying MQTT setup");
+  setupMqtt();
+
 }
 
 void loop() {
   // put your main code here, to run repeatedly
-
-  if(e22ttl.available() > 0){
-    /*DEBUG_PRINTLN("Data available from e22");
-    if(receive_packetized_message((void*)&rx_buffer, RX_BUFFER_LENGTH)){
-      DEBUG_PRINTLN("Data rx succcess");
-      message_printer((Message*)&rx_buffer, RX_BUFFER_LENGTH);
-    }
-    else{
-      DEBUG_PRINTLN("Data rx failure");
-    }
-    */
-    
+  rssi = receive_packet(&rx_packet);
+  
+  if(rssi < 0){
+    DEBUG_PRINTLN("Failed to receive a packet");
+    return;
   }
+
+  packet_printer(rx_packet);
+
+  mqttPublishData(&rx_packet, rssi);
+
+  clear_packet_messages(&rx_packet);
 
 }
