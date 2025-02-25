@@ -212,15 +212,15 @@ void tx_task_code(void * params){
 
 void setupWiFi(){
   DEBUG_PRINTLN("Starting WiFi with:");
-  DEBUG_PRINT("SSID: "); DEBUG_PRINT(wifi_ssid); DEBUG_PRINT(" PASS: "); DEBUG_PRINTLN(wifi_password); 
-
-  while(WiFi.begin(wifi_ssid, wifi_password) != WL_CONNECTED){
+  DEBUG_PRINT("SSID: "); DEBUG_PRINT(wifi_ssid); DEBUG_PRINT(" PASS: "); DEBUG_PRINTLN(wifi_password);
+ 
+  do{
     DEBUG_PRINTLN("Could not connect to WiFi, trying again in 5s");
     delay(5000);
-  }
-
+  }while(WiFi.status() != WL_CONNECTED);
+ 
   DEBUG_PRINTLN("WiFi Connected! ");
-
+ 
 }
 
 void setupMqtt(){
