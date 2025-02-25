@@ -5,6 +5,7 @@
 #define _TASK_SLEEP_ON_IDLE_RUN
 
 #define LoRa_E22_DEBUG
+#define INCLUDE_eTaskGetState
 
 #include <Arduino.h>
 #include <DHT.h>
@@ -13,7 +14,7 @@
 #include <WiFi.h>
 #include <ArduinoMqttClient.h>
 
-//#define RECEIVER
+#define RECEIVER
 #ifndef RECEIVER
   #define TRANSMITTER
 #endif
@@ -37,6 +38,7 @@
 
 typedef struct _Message{
   float temperature;
+  float humidity;
 }Message;
 
 const uint8_t MESSAGE_SIZE_B = sizeof(Message);
@@ -65,7 +67,7 @@ const char mqtt_topic[]  = "EPIC_E22/Rx_Packet";
 
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
-TimerHandle_t sensorTimer, txTimer;
+TaskHandle_t  sensorTask = NULL, txTask = NULL;
 
 LoRa_E22 e22ttl(&Serial2, E22_AUX, E22_M0, E22_M1, UART_BPS_RATE_9600 );
 
@@ -78,6 +80,7 @@ Packet rx_packet;
 Packet tx_packet;
 Message new_message;
 char buffer[BUFFER_SIZE];
+
 
 void buffer_dump(uint8_t *buffer, uint8_t length){
   DEBUG_PRINTLN("---- dump ----");
@@ -113,6 +116,7 @@ uint8_t packet_full(Packet packet){ return packet._msg_index >= MESSAGE_COUNT; }
 
 void clear_packet_messages(Packet *packet){
   memset((void *)&packet->messages, 0, PACKET_MSG_SIZE_B );
+  packet->_msg_index = 0;
 }
 
 void send_packet(Packet *packet){
@@ -123,13 +127,10 @@ void send_packet(Packet *packet){
     return;
   }
   else
-    packet->count++;
+
   
   DEBUG_PRINTLN("All data sent correctly");
   
-  clear_packet_messages(packet);
-  DEBUG_PRINTLN("Wiped packet");
-
 }
 
 int receive_packet(Packet *packet){
@@ -169,19 +170,47 @@ void mqttPublishData(Packet *packet, uint8_t rssi){
 }
 
 
-void sensorTimerCallback(TimerHandle_t xTimer ){
-  if(packet_full(tx_packet)){
-    DEBUG_PRINTLN("Messages are maxed out");
-    return;
+void sensor_task_code(void * params){
+  DEBUG_PRINTLN("Starting Sensor Task");
+  while(1){
+    if(packet_full(tx_packet)){
+      DEBUG_PRINTLN("Messages are maxed out");
+    }
+    else{
+      new_message.temperature = (float)random(0, 40);
+      new_message.humidity = (float)random(0, 100);
+      DEBUG_PRINT("T: "); DEBUG_PRINT(new_message.temperature); DEBUG_PRINT("H: "); DEBUG_PRINTLN(new_message.humidity);
+      
+      DEBUG_PRINTLN("Appending packet")
+      append_packet_message(&tx_packet, new_message);
+    }
+
+    DEBUG_PRINT("Delaying "); DEBUG_PRINTLN(SENSOR_INTERVAL);
+    vTaskDelay(SENSOR_INTERVAL);
   }
-
-  new_message.temperature = (float)random(0, 40);
-  append_packet_message(&tx_packet, new_message);
-
+  return;
 }
 
-void txTimerCallback(TimerHandle_t xTimer ){
-  send_packet(&tx_packet);
+void tx_task_code(void * params){
+  DEBUG_PRINTLN("Starting Tx Task");
+  DEBUG_PRINT("Delaying "); DEBUG_PRINTLN(TX_INTERVAL);
+  vTaskDelay(TX_INTERVAL);
+
+  while(1){
+    DEBUG_PRINTLN("Tx'ing packet");
+    send_packet(&tx_packet);
+    
+    tx_packet.count++;
+    DEBUG_PRINTLN("Count increased")
+    
+    clear_packet_messages(&tx_packet);
+    DEBUG_PRINTLN("Wiped packet");
+
+    DEBUG_PRINT("Delaying "); DEBUG_PRINTLN(TX_INTERVAL);
+    vTaskDelay(TX_INTERVAL);
+
+  }
+  return;
 }
 
 void setupWiFi(){
@@ -211,28 +240,19 @@ void setupMqtt(){
 }
 
 
-
-uint8_t setupTimers(){
-  DEBUG_PRINTLN("Tring to create timers");
-  sensorTimer = xTimerCreate("Sensor Timer", SENSOR_INTERVAL, pdTRUE, (void *)0, sensorTimerCallback);
-  txTimer = xTimerCreate("Tx Timer", TX_INTERVAL, pdTRUE, (void *)1, txTimerCallback);
-
-  if(sensorTimer == NULL || txTimer == NULL){
-    DEBUG_PRINTLN("Could not init timers")
+uint8_t setupTasks(){
+  DEBUG_PRINTLN("Tring to create sensor task");
+  if(xTaskCreate(sensor_task_code, "Sensor Task", 4096, (void*) 1, 1, &sensorTask) != pdPASS){
+    DEBUG_PRINTLN("Could not init sensor task");
     return 0;
   }
 
-  DEBUG_PRINTLN("Starting RTOS Timer");
-  if(xTimerStart(sensorTimer, 0) != pdPASS){
-      DEBUG_PRINTLN("Could not start sensor timer");
-      return 0;
-  }
-  if(xTimerStart(txTimer, 0) != pdPASS){
-      DEBUG_PRINTLN("Could not start tx timer");
-      return 0;
+  DEBUG_PRINTLN("Tring to create tx task");
+  if(xTaskCreate(tx_task_code, "Tx Task", 4096, (void*) 1, 2, &txTask) != pdPASS){
+    DEBUG_PRINTLN("Could not init task");
+    return 0;
   }
 
-  vTaskStartScheduler();
   DEBUG_PRINTLN("Tasks successfully started");
   return 1;
   

@@ -6,7 +6,7 @@ uint8_t rssi = 0;
 
 void setup() {
   
-  Serial.begin(9600);
+  Serial.begin(115200);
   while(!Serial) { }; // wait for serial monitor to connect
 
   DEBUG_PRINTLN("Started Serial & debug");
