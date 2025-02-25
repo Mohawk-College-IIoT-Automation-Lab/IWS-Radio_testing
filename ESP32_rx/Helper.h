@@ -1,9 +1,6 @@
 #ifndef HELPER_H
 #define HELPER_H
 
-#define _TASK_PRIORITY
-#define _TASK_SLEEP_ON_IDLE_RUN
-
 #define LoRa_E22_DEBUG
 #define INCLUDE_eTaskGetState
 
