@@ -9,21 +9,20 @@
 #include <Arduino.h>
 #include <DHT.h>
 #include <LoRa_E22.h>
-#include <TaskScheduler.h>
 
 #include <WiFi.h>
 #include <ArduinoMqttClient.h>
 
-#define RECEIVER
+//#define RECEIVER
 #ifndef RECEIVER
   #define TRANSMITTER
 #endif
 
 #define MAX_PACKET_SIZE_B 240
 
-#define E22_AUX 4
-#define E22_M0 3
-#define E22_M1 5
+#define E22_AUX 18 
+#define E22_M0 21
+#define E22_M1 19
 
 #define E22_RSSI true
 
@@ -53,6 +52,9 @@ const uint8_t PACKET_SIZE_B = sizeof(Packet);
 const uint8_t PACKET_MSG_SIZE_B = MESSAGE_SIZE_B * MESSAGE_COUNT;
 const uint16_t BUFFER_SIZE = PACKET_SIZE_B * 10;
 
+const long TX_INTERVAL = 1000 * 60 * 2; // 1000 ms * 60s * 2m = 2m in ms 
+const long SENSOR_INTERVAL = ceil(TX_INTERVAL / MESSAGE_COUNT); 
+
 const char* wifi_ssid = "REPLACE_WITH_YOUR_SSID";
 const char* wifi_password = "REPLACE_WITH_YOUR_PASSWORD";
 
@@ -63,6 +65,7 @@ const char mqtt_topic[]  = "EPIC_E22/Rx_Packet";
 
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
+TimerHandle_t sensorTimer, txTimer;
 
 LoRa_E22 e22ttl(&Serial2, E22_AUX, E22_M0, E22_M1, UART_BPS_RATE_9600 );
 
@@ -72,6 +75,8 @@ Configuration *config;
 ResponseStatus rs;
 
 Packet rx_packet;
+Packet tx_packet;
+Message new_message;
 char buffer[BUFFER_SIZE];
 
 void buffer_dump(uint8_t *buffer, uint8_t length){
@@ -103,6 +108,8 @@ void append_packet_message(Packet *packet, Message msg){
   packet->_msg_index++;
   
 }
+
+uint8_t packet_full(Packet packet){ return packet._msg_index >= MESSAGE_COUNT; }
 
 void clear_packet_messages(Packet *packet){
   memset((void *)&packet->messages, 0, PACKET_MSG_SIZE_B );
@@ -161,6 +168,22 @@ void mqttPublishData(Packet *packet, uint8_t rssi){
 
 }
 
+
+void sensorTimerCallback(TimerHandle_t xTimer ){
+  if(packet_full(tx_packet)){
+    DEBUG_PRINTLN("Messages are maxed out");
+    return;
+  }
+
+  new_message.temperature = (float)random(0, 40);
+  append_packet_message(&tx_packet, new_message);
+
+}
+
+void txTimerCallback(TimerHandle_t xTimer ){
+  send_packet(&tx_packet);
+}
+
 void setupWiFi(){
   DEBUG_PRINTLN("Starting WiFi with:");
   DEBUG_PRINT("SSID: "); DEBUG_PRINT(wifi_ssid); DEBUG_PRINT(" PASS: "); DEBUG_PRINTLN(wifi_password); 
@@ -185,6 +208,34 @@ void setupMqtt(){
   }
 
   DEBUG_PRINTLN("Mqtt Broker connected! ");
+}
+
+
+
+uint8_t setupTimers(){
+  DEBUG_PRINTLN("Tring to create timers");
+  sensorTimer = xTimerCreate("Sensor Timer", SENSOR_INTERVAL, pdTRUE, (void *)0, sensorTimerCallback);
+  txTimer = xTimerCreate("Tx Timer", TX_INTERVAL, pdTRUE, (void *)1, txTimerCallback);
+
+  if(sensorTimer == NULL || txTimer == NULL){
+    DEBUG_PRINTLN("Could not init timers")
+    return 0;
+  }
+
+  DEBUG_PRINTLN("Starting RTOS Timer");
+  if(xTimerStart(sensorTimer, 0) != pdPASS){
+      DEBUG_PRINTLN("Could not start sensor timer");
+      return 0;
+  }
+  if(xTimerStart(txTimer, 0) != pdPASS){
+      DEBUG_PRINTLN("Could not start tx timer");
+      return 0;
+  }
+
+  vTaskStartScheduler();
+  DEBUG_PRINTLN("Tasks successfully started");
+  return 1;
+  
 }
 
 
