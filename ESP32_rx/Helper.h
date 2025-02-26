@@ -21,6 +21,8 @@
 #define E22_AUX 18 
 #define E22_M0 21
 #define E22_M1 19
+#define E22_TX_PIN 17
+#define E22_RX_PIN 16
 
 #define E22_RSSI true
 
@@ -257,7 +259,7 @@ uint8_t setupTasks(){
 
 
 uint8_t setupE22(){
-  Serial2.begin(9600);
+  Serial2.begin(9600, SERIAL_8N1, E22_RX_PIN, E22_TX_PIN);
   e22ttl.begin(); // begin the e22
 
   rsc = e22ttl.getConfiguration(); // get the current config from the E22
