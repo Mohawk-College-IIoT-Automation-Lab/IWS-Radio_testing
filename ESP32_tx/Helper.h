@@ -16,7 +16,7 @@
   #define TRANSMITTER
 #endif
 
-#define MAX_PACKET_SIZE_B 240
+#define MAX_PACKET_SIZE_B 239
 
 #define E22_AUX 18 
 #define E22_M0 21
@@ -36,22 +36,31 @@
 #define E22_CONFIG_CHAN 0x04
 
 typedef struct _Message{
-  float temperature;
-  float humidity;
+	float temperature;
+	float humidity;
+	//uint8_t whatever;
 }Message;
 
-const uint8_t MESSAGE_SIZE_B = sizeof(Message);
-const uint8_t MESSAGE_COUNT = floor((MAX_PACKET_SIZE_B - sizeof(long) - sizeof(uint8_t)) / MESSAGE_SIZE_B); // (240 - 4 - 1) / 12 = 19 messages // ceil so that we always round down and don't try and store data we can't send
+typedef struct _packet_data{
+	uint32_t count;
+	uint8_t _msg_index;
+}PacketData;
+
+#define MAX_PACKET_SIZE_B 240
+#define MESSAGE_SIZE_B sizeof(Message)
+#define PACKETDATA_SIZE_B sizeof(PacketData)
+#define MESSAGE_COUNT (MAX_PACKET_SIZE_B - PACKETDATA_SIZE_B) / MESSAGE_SIZE_B // (240 - 8) / 8 = 19 messages // ceil so that we always round down and don't try and store data we can't send
+#define PACKET_MSG_SIZE_B MESSAGE_SIZE_B * (MESSAGE_COUNT)
+#define PADD_SIZE_B MAX_PACKET_SIZE_B - PACKET_MSG_SIZE_B - PACKETDATA_SIZE_B
 
 typedef struct _Packet{
-  long count = 0;
-  uint8_t _msg_index = 0;
-  Message messages[MESSAGE_COUNT];
+	PacketData packetData;
+	Message messages[MESSAGE_COUNT];
+	uint8_t padding[PADD_SIZE_B];
 }Packet;
 
-const uint8_t PACKET_SIZE_B = sizeof(Packet);
-const uint8_t PACKET_MSG_SIZE_B = MESSAGE_SIZE_B * MESSAGE_COUNT;
-const uint16_t BUFFER_SIZE = PACKET_SIZE_B * 10;
+#define PACKET_SIZE_B sizeof(Packet)
+#define BUFFER_SIZE PACKET_SIZE_B * 10
 
 const long TX_INTERVAL = 1000 * 60 * 2; // 1000 ms * 60s * 2m = 2m in ms 
 const long SENSOR_INTERVAL = ceil(TX_INTERVAL / MESSAGE_COUNT); 
@@ -106,16 +115,16 @@ void packet_printer(Packet packet){
 }
 
 void append_packet_message(Packet *packet, Message msg){
-  memcpy((void *)&packet->messages[packet->_msg_index], (const void*) &msg, MESSAGE_SIZE_B);
-  packet->_msg_index++;
+  memcpy((void *)&packet->messages[packet->packetData._msg_index], (const void*) &msg, MESSAGE_SIZE_B);
+  packet->packetData._msg_index++;
   
 }
 
-uint8_t packet_full(Packet packet){ return packet._msg_index >= MESSAGE_COUNT; }
+uint8_t packet_full(Packet packet){ return packet.packetData._msg_index >= MESSAGE_COUNT; }
 
 void clear_packet_messages(Packet *packet){
   memset((void *)&packet->messages, 0, PACKET_MSG_SIZE_B );
-  packet->_msg_index = 0;
+  packet->packetData._msg_index = 0;
 }
 
 void send_packet(Packet *packet){
@@ -123,6 +132,7 @@ void send_packet(Packet *packet){
   
   if(rs.code != E22_SUCCESS){
     DEBUG_PRINTLN("E22 failed to send message");
+    DEBUG_PRINTLN(rs.getResponseDescription());
     return;
   }
   else
@@ -154,9 +164,9 @@ int receive_packet(Packet *packet){
 void mqttPublishData(Packet *packet, uint8_t rssi){
   memset((void *)&buffer, 0, BUFFER_SIZE);
 
-  sprintf((char *)&buffer, "Packet Count: %ld , RSSI: %d\n", packet->count, rssi);
+  sprintf((char *)&buffer, "Packet Count: %ld , RSSI: %d\n", packet->packetData.count, rssi);
 
-  for(int i = 0; i < packet->_msg_index; i++)
+  for(int i = 0; i < packet->packetData._msg_index; i++)
     sprintf((char *)&buffer, "  c: %d, T: %f \n", i, packet->messages[i].temperature);
 
   mqttClient.beginMessage(mqtt_topic);
@@ -199,7 +209,7 @@ void tx_task_code(void * params){
     DEBUG_PRINTLN("Tx'ing packet");
     send_packet(&tx_packet);
     
-    tx_packet.count++;
+    tx_packet.packetData.count++;
     DEBUG_PRINTLN("Count increased")
     
     clear_packet_messages(&tx_packet);
