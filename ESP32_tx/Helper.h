@@ -11,7 +11,7 @@
 #include <WiFi.h>
 #include <ArduinoMqttClient.h>
 
-#define RECEIVER
+// #define RECEIVER
 #ifndef RECEIVER
   #define TRANSMITTER
 #endif
@@ -46,27 +46,29 @@ typedef struct _packet_data{
 	uint8_t _msg_index;
 }PacketData;
 
-#define MAX_PACKET_SIZE_B 240
+#define MAX_PACKET_SIZE_B 239
 #define MESSAGE_SIZE_B sizeof(Message)
 #define PACKETDATA_SIZE_B sizeof(PacketData)
-#define MESSAGE_COUNT (MAX_PACKET_SIZE_B - PACKETDATA_SIZE_B) / MESSAGE_SIZE_B // (240 - 8) / 8 = 19 messages // ceil so that we always round down and don't try and store data we can't send
+#define MESSAGE_COUNT ((MAX_PACKET_SIZE_B - PACKETDATA_SIZE_B) / MESSAGE_SIZE_B) - 1
+// #define MESSAGE_COUNT (MAX_PACKET_SIZE_B - PACKETDATA_SIZE_B) / MESSAGE_SIZE_B // (240 - 8) / 8 = 19 messages // ceil so that we always round down and don't try and store data we can't send
 #define PACKET_MSG_SIZE_B MESSAGE_SIZE_B * (MESSAGE_COUNT)
 #define PADD_SIZE_B MAX_PACKET_SIZE_B - PACKET_MSG_SIZE_B - PACKETDATA_SIZE_B
 
 typedef struct _Packet{
 	PacketData packetData;
 	Message messages[MESSAGE_COUNT];
-	uint8_t padding[PADD_SIZE_B];
+	// uint8_t padding[PADD_SIZE_B];
 }Packet;
 
 #define PACKET_SIZE_B sizeof(Packet)
 #define BUFFER_SIZE PACKET_SIZE_B * 10
 
-const long TX_INTERVAL = 1000 * 60 * 2; // 1000 ms * 60s * 2m = 2m in ms 
+const long TX_INTERVAL = 1000 * 60 * 2; // 1000 ms * 60s * 2m = 2m in ms
+// const long SENSOR_INTERVAL = ceil(TX_INTERVAL);
 const long SENSOR_INTERVAL = ceil(TX_INTERVAL / MESSAGE_COUNT); 
 
-const char* wifi_ssid = "REPLACE_WITH_YOUR_SSID";
-const char* wifi_password = "REPLACE_WITH_YOUR_PASSWORD";
+const char* wifi_ssid = "epic24";
+const char* wifi_password = "Epicepic@123";
 
 const char mqtt_broker[] = "test.mosquitto.org";
 int        mqtt_port     = 1883;
