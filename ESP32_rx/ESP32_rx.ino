@@ -37,4 +37,6 @@ void loop() {
 
   clear_packet_messages(&rx_packet);
 
+  vTaskDelay(250);
+
 }
