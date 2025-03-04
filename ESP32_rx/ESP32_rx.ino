@@ -27,18 +27,18 @@ void loop() {
   // put your main code here, to run repeatedly
   rssi = receive_packet(&rx_packet);
   
-  if(rssi <= 0){
+  if(rssi < 0 || rx_packet.packetData._msg_index > 0){
     DEBUG_PRINTLN("Failed to receive a packet");
     return;
   }
   else{
     DEBUG_PRINTLN("GOT DATA");
+    
+    packet_printer(rx_packet);
+    mqttPublishData(&rx_packet, (uint8_t)rssi);
+    clear_packet_messages(&rx_packet);
   }
 
-  //packet_printer(rx_packet);
 
-  //mqttPublishData(&rx_packet, (uint8_t)rssi);
-
-  //clear_packet_messages(&rx_packet);
 
 }

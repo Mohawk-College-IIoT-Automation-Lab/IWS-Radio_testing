@@ -17,7 +17,7 @@
   #define TRANSMITTER
 #endif
 
-#define MAX_PACKET_SIZE_B 239
+#define MAX_PACKET_SIZE_B 235
 
 #define E22_AUX 18 
 #define E22_M0 21
@@ -174,49 +174,6 @@ void mqttPublishData(Packet *packet, uint8_t rssi){
 
 }
 
-void sensor_task_code(void * params){
-  DEBUG_PRINTLN("Starting Sensor Task");
-  while(1){
-    if(packet_full(tx_packet)){
-      DEBUG_PRINTLN("Messages are maxed out");
-    }
-    else{
-      new_message.temperature = (float)random(0, 40);
-      new_message.humidity = (float)random(0, 100);
-      DEBUG_PRINT("T: "); DEBUG_PRINT(new_message.temperature); DEBUG_PRINT("H: "); DEBUG_PRINTLN(new_message.humidity);
-      
-      DEBUG_PRINTLN("Appending packet")
-      append_packet_message(&tx_packet, new_message);
-    }
-
-    DEBUG_PRINT("Delaying "); DEBUG_PRINTLN(SENSOR_INTERVAL);
-    vTaskDelay(SENSOR_INTERVAL);
-  }
-  return;
-}
-
-void tx_task_code(void * params){
-  DEBUG_PRINTLN("Starting Tx Task");
-  DEBUG_PRINT("Delaying "); DEBUG_PRINTLN(TX_INTERVAL);
-  vTaskDelay(TX_INTERVAL);
-
-  while(1){
-    DEBUG_PRINTLN("Tx'ing packet");
-    send_packet(&tx_packet);
-    
-    tx_packet.packetData.count++;
-    DEBUG_PRINTLN("Count increased")
-    
-    clear_packet_messages(&tx_packet);
-    DEBUG_PRINTLN("Wiped packet");
-
-    DEBUG_PRINT("Delaying "); DEBUG_PRINTLN(TX_INTERVAL);
-    vTaskDelay(TX_INTERVAL);
-
-  }
-  return;
-}
-
 void setupWiFi(){
   DEBUG_PRINTLN("Starting WiFi with:");
   DEBUG_PRINT("SSID: "); DEBUG_PRINT(wifi_ssid); DEBUG_PRINT(" PASS: "); DEBUG_PRINTLN(wifi_password);
@@ -245,24 +202,6 @@ void setupMqtt(){
   DEBUG_PRINTLN("Mqtt Broker connected! ");
 }
 
-
-uint8_t setupTasks(){
-  DEBUG_PRINTLN("Tring to create sensor task");
-  if(xTaskCreate(sensor_task_code, "Sensor Task", 4096, (void*) 1, 1, &sensorTask) != pdPASS){
-    DEBUG_PRINTLN("Could not init sensor task");
-    return 0;
-  }
-
-  DEBUG_PRINTLN("Tring to create tx task");
-  if(xTaskCreate(tx_task_code, "Tx Task", 4096, (void*) 1, 2, &txTask) != pdPASS){
-    DEBUG_PRINTLN("Could not init task");
-    return 0;
-  }
-
-  DEBUG_PRINTLN("Tasks successfully started");
-  return 1;
-  
-}
 
 
 uint8_t setupE22(){
