@@ -141,22 +141,17 @@ void send_packet(Packet *packet){
 }
 
 int receive_packet(Packet *packet){
-  rc = e22ttl.receiveMessageComplete(PACKET_SIZE_B, true);
+  rsc = e22ttl.receiveMessageComplete(PACKET_SIZE_B, true);
   
-  if(rc.status.code != E22_SUCCESS){
+  if(rsc.status.code != E22_SUCCESS){
     DEBUG_PRINTLN("E22 failed to receive message");
     DEBUG_PRINTLN(rc.status.getResponseDescription());
     return -1;
   }
 
-  if(rc.data.length() <= 0){
-    DEBUG_PRINTLN("No data received");
-    return -1;
-  }
+  memcpy((void *)packet, (const void *)&rsc.data, PACKET_SIZE_B);
 
-  memcpy((void *)packet, (const void *)&rc.data, PACKET_SIZE_B);
-
-  return rc.rssi;
+  return rsc.rssi;
 }
 
 void mqttPublishData(Packet *packet, uint8_t rssi){
