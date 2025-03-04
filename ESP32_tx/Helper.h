@@ -8,6 +8,7 @@
 #include <DHT.h>
 #include <LoRa_E22.h>
 
+#include <creds.h>
 #include <WiFi.h>
 #include <ArduinoMqttClient.h>
 
@@ -64,9 +65,6 @@ typedef struct _Packet{
 
 const long TX_INTERVAL = 1000 * 60 * 2; // 1000 ms * 60s * 2m = 2m in ms 
 const long SENSOR_INTERVAL = ceil(TX_INTERVAL / MESSAGE_COUNT); 
-
-const char* wifi_ssid = "REPLACE_WITH_YOUR_SSID";
-const char* wifi_password = "REPLACE_WITH_YOUR_PASSWORD";
 
 const char mqtt_broker[] = "test.mosquitto.org";
 int        mqtt_port     = 1883;
@@ -177,7 +175,6 @@ void mqttPublishData(Packet *packet, uint8_t rssi){
   DEBUG_PRINT(buffer);
 
 }
-
 
 void sensor_task_code(void * params){
   DEBUG_PRINTLN("Starting Sensor Task");
