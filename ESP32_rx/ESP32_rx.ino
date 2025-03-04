@@ -26,7 +26,6 @@ void loop() {
   vTaskDelay(1000);
   // put your main code here, to run repeatedly
   rssi = receive_packet(&rx_packet);
-  DEBUG_PRINTLN(e22ttl.available());
   
   if(rssi <= 0){
     DEBUG_PRINTLN("Failed to receive a packet");

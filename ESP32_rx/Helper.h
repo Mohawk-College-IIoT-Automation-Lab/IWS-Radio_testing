@@ -141,7 +141,7 @@ void send_packet(Packet *packet){
 }
 
 int receive_packet(Packet *packet){
-  rc = e22ttl.receiveMessageComplete(PACKET_SIZE_B, true)
+  rc = e22ttl.receiveMessageComplete(PACKET_SIZE_B, true);
   
   if(rc.status.code != E22_SUCCESS){
     DEBUG_PRINTLN("E22 failed to receive message");
