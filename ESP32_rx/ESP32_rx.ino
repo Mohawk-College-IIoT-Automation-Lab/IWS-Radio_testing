@@ -2,7 +2,7 @@
 #include "Helper.h"
 
 extern Packet rx_packet;
-uint8_t rssi = 0;
+int rssi = 0;
 
 void setup() {
   
@@ -23,18 +23,23 @@ void setup() {
 }
 
 void loop() {
+  vTaskDelay(1000);
   // put your main code here, to run repeatedly
   rssi = receive_packet(&rx_packet);
+  DEBUG_PRINTLN(e22ttl.available());
   
-  if(rssi < 0){
+  if(rssi <= 0){
     DEBUG_PRINTLN("Failed to receive a packet");
     return;
   }
+  else{
+    DEBUG_PRINTLN("GOT DATA");
+  }
 
-  packet_printer(rx_packet);
+  //packet_printer(rx_packet);
 
-  mqttPublishData(&rx_packet, rssi);
+  //mqttPublishData(&rx_packet, (uint8_t)rssi);
 
-  clear_packet_messages(&rx_packet);
+  //clear_packet_messages(&rx_packet);
 
 }
