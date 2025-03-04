@@ -12,7 +12,7 @@
 #include <WiFi.h>
 #include <ArduinoMqttClient.h>
 
-#define RECEIVER
+//#define RECEIVER
 #ifndef RECEIVER
   #define TRANSMITTER
 #endif
@@ -63,7 +63,7 @@ typedef struct _Packet{
 #define PACKET_SIZE_B sizeof(Packet)
 #define BUFFER_SIZE PACKET_SIZE_B * 10
 
-const long TX_INTERVAL = 1000 * 60; // 1000 ms * 60s * 2m = 2m in ms 
+const long TX_INTERVAL = 1000 * 30; // 1000 ms * 60s * 2m = 2m in ms 
 const long SENSOR_INTERVAL = TX_INTERVAL / MESSAGE_COUNT; 
 
 const char mqtt_broker[] = "test.mosquitto.org";
@@ -73,7 +73,6 @@ const char mqtt_topic[]  = "EPIC_E22/Rx_Packet";
 
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
-TaskHandle_t  sensorTask = NULL, txTask = NULL;
 
 LoRa_E22 e22ttl(&Serial2, E22_AUX, E22_M0, E22_M1, UART_BPS_RATE_9600 );
 
@@ -126,16 +125,15 @@ void clear_packet_messages(Packet *packet){
 }
 
 void send_packet(Packet *packet){
-  rs = e22ttl.sendFixedMessage(E22_DEST_ADDH, E22_CONFIG_ADDL_TX, E22_CONFIG_CHAN, (const void*)packet, PACKET_SIZE_B);
+  DEBUG_PRINT("tx'ing to: "); DEBUG_PRINTLN(E22_CONFIG_ADDL_RX);
+  rs = e22ttl.sendFixedMessage(E22_DEST_ADDH, E22_CONFIG_ADDL_RX, E22_CONFIG_CHAN, (const void*)packet, PACKET_SIZE_B);
   
   if(rs.code != E22_SUCCESS){
     DEBUG_PRINTLN("E22 failed to send message");
     DEBUG_PRINTLN(rs.getResponseDescription());
     return;
   }
-  else
 
-  
   DEBUG_PRINTLN("All data sent correctly");
   
 }
@@ -145,7 +143,7 @@ int receive_packet(Packet *packet){
   
   if(rsc.status.code != E22_SUCCESS){
     DEBUG_PRINTLN("E22 failed to receive message");
-    DEBUG_PRINTLN(rc.status.getResponseDescription());
+    DEBUG_PRINTLN(rsc.status.getResponseDescription());
     return -1;
   }
 
@@ -171,53 +169,40 @@ void mqttPublishData(Packet *packet, uint8_t rssi){
 
 }
 
-void sensor_task_code(void * params){
-  DEBUG_PRINTLN("Starting Sensor Task");
-  while(1){
-    if(packet_full(tx_packet)){
-      DEBUG_PRINTLN("Messages are maxed out");
-    }
-    else{
-      new_message.temperature = (float)random(0, 40);
-      new_message.humidity = (float)random(0, 100);
-      DEBUG_PRINT("T: "); DEBUG_PRINT(new_message.temperature); DEBUG_PRINT("H: "); DEBUG_PRINTLN(new_message.humidity);
-      
-      DEBUG_PRINTLN("Appending packet")
-      append_packet_message(&tx_packet, new_message);
-    }
+uint8_t sensor_task_code(){
 
-    DEBUG_PRINT("Delaying "); DEBUG_PRINTLN(SENSOR_INTERVAL);
-    vTaskDelay(SENSOR_INTERVAL);
+  if(packet_full(tx_packet)){
+    DEBUG_PRINTLN("Messages are maxed out");
+    return 0;
   }
-  return;
+  
+  new_message.temperature = (float)random(0, 40);
+  new_message.humidity = (float)random(0, 100);
+  DEBUG_PRINT("T: "); DEBUG_PRINT(new_message.temperature); DEBUG_PRINT("H: "); DEBUG_PRINTLN(new_message.humidity);
+  
+  DEBUG_PRINTLN("Appending packet")
+  append_packet_message(&tx_packet, new_message);
+
+  return 1;
 }
 
-void tx_task_code(void * params){
-  DEBUG_PRINTLN("Starting Tx Task");
-  DEBUG_PRINT("Delaying "); DEBUG_PRINTLN(TX_INTERVAL);
-  vTaskDelay(TX_INTERVAL);
-
-  while(1){
-    DEBUG_PRINTLN("Tx'ing packet");
-    send_packet(&tx_packet);
-    
-    tx_packet.packetData.count++;
-    DEBUG_PRINTLN("Count increased")
-    
-    clear_packet_messages(&tx_packet);
-    DEBUG_PRINTLN("Wiped packet");
-
-    DEBUG_PRINT("Delaying "); DEBUG_PRINTLN(TX_INTERVAL);
-    vTaskDelay(TX_INTERVAL);
-
-  }
-  return;
+void tx_task_code(){
+  DEBUG_PRINTLN("Tx'ing packet");
+  send_packet(&tx_packet);
+  
+  tx_packet.packetData.count++;
+  DEBUG_PRINTLN("Count increased")
+  
+  clear_packet_messages(&tx_packet);
+  DEBUG_PRINTLN("Wiped packet");
 }
 
 void setupWiFi(){
   DEBUG_PRINTLN("Starting WiFi with:");
   DEBUG_PRINT("SSID: "); DEBUG_PRINT(wifi_ssid); DEBUG_PRINT(" PASS: "); DEBUG_PRINTLN(wifi_password);
- 
+
+  WiFi.begin(wifi_ssid, wifi_password);
+
   do{
     DEBUG_PRINTLN("Could not connect to WiFi, trying again in 5s");
     delay(5000);
@@ -238,25 +223,6 @@ void setupMqtt(){
   }
 
   DEBUG_PRINTLN("Mqtt Broker connected! ");
-}
-
-
-uint8_t setupTasks(){
-  DEBUG_PRINTLN("Tring to create sensor task");
-  if(xTaskCreate(sensor_task_code, "Sensor Task", 4096, (void*) 1, 1, &sensorTask) != pdPASS){
-    DEBUG_PRINTLN("Could not init sensor task");
-    return 0;
-  }
-
-  DEBUG_PRINTLN("Tring to create tx task");
-  if(xTaskCreate(tx_task_code, "Tx Task", 4096, (void*) 1, 2, &txTask) != pdPASS){
-    DEBUG_PRINTLN("Could not init task");
-    return 0;
-  }
-
-  DEBUG_PRINTLN("Tasks successfully started");
-  return 1;
-  
 }
 
 

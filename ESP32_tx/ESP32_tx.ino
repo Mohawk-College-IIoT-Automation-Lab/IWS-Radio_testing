@@ -16,12 +16,14 @@ void setup() {
   DEBUG_PRINT("Packet: "); DEBUG_PRINTLN(sizeof(Packet));
   DEBUG_PRINT("TX INT: "); DEBUG_PRINT(TX_INTERVAL); DEBUG_PRINT(" Sensor Int: "); DEBUG_PRINTLN(SENSOR_INTERVAL);
 
-  DEBUG_PRINTLN("Trying Task Setup");
-  setupTasks();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  vTaskDelay(10);
+  if(!sensor_task_code()){
+    tx_task_code();
+    DEBUG_PRINTLN("I am not stuck");
+  }
+  DEBUG_PRINT("Delaying: "); DEBUG_PRINTLN(SENSOR_INTERVAL);
+  vTaskDelay(SENSOR_INTERVAL);
 }
 
