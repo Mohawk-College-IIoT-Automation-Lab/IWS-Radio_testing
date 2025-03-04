@@ -11,7 +11,7 @@
 #include <WiFi.h>
 #include <ArduinoMqttClient.h>
 
-#define RECEIVER
+// #define RECEIVER
 #ifndef RECEIVER
   #define TRANSMITTER
 #endif
