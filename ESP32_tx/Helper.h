@@ -47,7 +47,7 @@ typedef struct _packet_data{
 	uint8_t _msg_index;
 }PacketData;
 
-#define MAX_PACKET_SIZE_B 240
+#define MAX_PACKET_SIZE_B 235
 #define MESSAGE_SIZE_B sizeof(Message)
 #define PACKETDATA_SIZE_B sizeof(PacketData)
 #define MESSAGE_COUNT ((MAX_PACKET_SIZE_B - PACKETDATA_SIZE_B) / MESSAGE_SIZE_B) // (240 - 8) / 8 = 19 messages // ceil so that we always round down and don't try and store data we can't send
@@ -63,7 +63,7 @@ typedef struct _Packet{
 #define PACKET_SIZE_B sizeof(Packet)
 #define BUFFER_SIZE PACKET_SIZE_B * 10
 
-const long TX_INTERVAL = 1000 * 60 * 2; // 1000 ms * 60s * 2m = 2m in ms 
+const long TX_INTERVAL = 1000 * 60; // 1000 ms * 60s * 2m = 2m in ms 
 const long SENSOR_INTERVAL = TX_INTERVAL / MESSAGE_COUNT; 
 
 const char mqtt_broker[] = "test.mosquitto.org";
@@ -141,16 +141,16 @@ void send_packet(Packet *packet){
 }
 
 int receive_packet(Packet *packet){
-  if(e22ttl.available())
-    rc = e22ttl.receiveMessageRSSI();
-  else{
-    DEBUG_PRINTLN("No E22 data");
-    return -1;
-  }
+  rc = e22ttl.receiveMessageComplete(PACKET_SIZE_B, true)
   
   if(rc.status.code != E22_SUCCESS){
     DEBUG_PRINTLN("E22 failed to receive message");
     DEBUG_PRINTLN(rc.status.getResponseDescription());
+    return -1;
+  }
+
+  if(rc.data.length() <= 0){
+    DEBUG_PRINTLN("No data received");
     return -1;
   }
 
