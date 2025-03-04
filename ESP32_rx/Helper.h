@@ -142,10 +142,13 @@ void send_packet(Packet *packet){
 
 int receive_packet(Packet *packet){
   rsc = e22ttl.receiveMessageComplete(PACKET_SIZE_B, true);
+
+  DEBUG_PRINT("code: "); DEBUG_PRINT(rsc.status.code); DEBUG_PRINT(" RSSI: "); DEBUG_PRINTLN(rsc.rssi);
+
   
   if(rsc.status.code != E22_SUCCESS){
     DEBUG_PRINTLN("E22 failed to receive message");
-    DEBUG_PRINTLN(rc.status.getResponseDescription());
+    DEBUG_PRINTLN(rsc.status.getResponseDescription());
     return -1;
   }
 
@@ -218,6 +221,8 @@ void setupWiFi(){
   DEBUG_PRINTLN("Starting WiFi with:");
   DEBUG_PRINT("SSID: "); DEBUG_PRINT(wifi_ssid); DEBUG_PRINT(" PASS: "); DEBUG_PRINTLN(wifi_password);
  
+  WiFi.begin(wifi_ssid, wifi_password);
+
   do{
     DEBUG_PRINTLN("Could not connect to WiFi, trying again in 5s");
     delay(5000);
